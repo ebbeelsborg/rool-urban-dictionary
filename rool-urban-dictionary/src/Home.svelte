@@ -6,49 +6,126 @@
     onNavigateDefine: () => void;
   }
 
+  interface Definition {
+    id: string;
+    term?: string;
+    grammar?: string;
+    definition?: string;
+    article?: string;
+    upvotes?: number;
+    downvotes?: number;
+    createdAt?: string;
+  }
+
   let { space, onNavigateDefine }: Props = $props();
 
   let searchQuery = $state("");
+  let activeSearchQuery = $state("");
   let isSearching = $state(false);
-  let searchResults = $state<any[]>([]);
   let hasSearched = $state(false);
 
-  // Reactive collection for floating words
+  // Track user's own votes in localStorage: { [definitionId]: 'up' | 'down' | null }
+  let userVotes = $state<Record<string, "up" | "down" | null>>({});
+
+  $effect(() => {
+    const saved = localStorage.getItem("rool_user_votes");
+    if (saved) {
+      try {
+        userVotes = JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse user votes", e);
+      }
+    }
+  });
+
+  $effect(() => {
+    localStorage.setItem("rool_user_votes", JSON.stringify(userVotes));
+  });
+
+  // Reactive collection for all definitions
   const definitions = space.collection({ where: { type: "definition" } });
-  let words = $derived(definitions.objects);
+  let words = $derived(definitions.objects as Definition[]);
+
+  // Derived search results from the reactive collection
+  let searchResults = $derived(
+    activeSearchQuery.trim()
+      ? words.filter((w) =>
+          w.term
+            ?.toLowerCase()
+            .includes(activeSearchQuery.trim().toLowerCase()),
+        )
+      : [],
+  );
 
   // Randomize word properties for animation
   const wordSeeds = $derived(
     words.map((w, i) => ({
       term: w.term,
-      x: `${(i * 137) % 90 + 5}%`,
+      x: `${((i * 137) % 90) + 5}%`,
       size: `${0.8 + (i % 5) * 0.2}rem`,
       duration: `${10 + (i % 8)}s`,
       delay: `-${(i * 2.5) % 15}s`,
       drift: `${5 + (i % 4)}s`,
-      opacity: 0.15 + (i % 3) * 0.05
-    }))
+      opacity: 0.15 + (i % 3) * 0.05,
+    })),
   );
 
   async function handleSearch() {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q || isSearching) return;
+    activeSearchQuery = searchQuery.trim();
+    if (!activeSearchQuery) {
+      hasSearched = false;
+      return;
+    }
+
     isSearching = true;
     hasSearched = true;
-    searchResults = [];
 
-    try {
-      const { objects } = await space.findObjects({
-        where: { type: "definition" },
-      });
-      // Filter client-side for case-insensitive term match
-      searchResults = objects.filter(
-        (obj: any) => obj.term && obj.term.toLowerCase().includes(q),
-      );
-    } catch (e) {
-      console.error("Search failed:", e);
-    } finally {
+    // We don't need to fetch manually anymore as it's reactive,
+    // but we add a small delay to simulate search feel if desired,
+    // or just end the loading state immediately.
+    setTimeout(() => {
       isSearching = false;
+    }, 300);
+  }
+
+  async function handleVote(definitionId: string, type: "up" | "down") {
+    try {
+      const def = words.find((r) => r.id === definitionId);
+      if (!def) return;
+
+      const currentVote = userVotes[definitionId];
+      let upDelta = 0;
+      let downDelta = 0;
+
+      if (currentVote === type) {
+        // Toggle off (undo)
+        if (type === "up") upDelta = -1;
+        else downDelta = -1;
+        userVotes[definitionId] = null;
+      } else {
+        // Switching or first time
+        if (currentVote === "up") upDelta = -1;
+        if (currentVote === "down") downDelta = -1;
+
+        if (type === "up") upDelta += 1;
+        if (type === "down") downDelta += 1;
+
+        userVotes[definitionId] = type;
+      }
+
+      const updates: any = {};
+      if (upDelta !== 0)
+        updates.upvotes = Math.max(0, (def.upvotes || 0) + upDelta);
+      if (downDelta !== 0)
+        updates.downvotes = Math.max(0, (def.downvotes || 0) + downDelta);
+
+      if (Object.keys(updates).length > 0) {
+        await space.updateObject(definitionId, {
+          data: updates,
+        });
+      }
+    } catch (e) {
+      console.error("Vote failed:", e);
     }
   }
 
@@ -119,7 +196,7 @@
             class="search-clear"
             onclick={() => {
               searchQuery = "";
-              searchResults = [];
+              activeSearchQuery = "";
               hasSearched = false;
             }}
           >
@@ -175,6 +252,31 @@
               <p class="card-article">{result.article}</p>
             {/if}
             <p class="card-definition">{result.definition}</p>
+            <div class="card-footer">
+              <div class="vote-buttons">
+                <button
+                  class="vote-btn upvote"
+                  class:active={userVotes[result.id] === "up"}
+                  onclick={() => handleVote(result.id, "up")}
+                  title="Upvote"
+                >
+                  <span class="vote-icon">👍</span>
+                  <span class="vote-count">{result.upvotes || 0}</span>
+                </button>
+                <button
+                  class="vote-btn downvote"
+                  class:active={userVotes[result.id] === "down"}
+                  onclick={() => handleVote(result.id, "down")}
+                  title="Downvote"
+                >
+                  <span class="vote-icon">👎</span>
+                  <span class="vote-count">{result.downvotes || 0}</span>
+                </button>
+              </div>
+              <span class="card-date"
+                >{new Date(result.createdAt || "").toLocaleDateString()}</span
+              >
+            </div>
           </div>
         {/each}
       </div>
@@ -217,7 +319,8 @@
     position: absolute;
     pointer-events: none;
     user-select: none;
-    animation: float-word var(--word-duration, 12s) linear var(--word-delay, 0s) infinite;
+    animation: float-word var(--word-duration, 12s) linear var(--word-delay, 0s)
+      infinite;
     font-size: var(--word-size, 1rem);
     left: var(--word-x, 50%);
     opacity: var(--word-opacity, 0.2);
@@ -438,6 +541,69 @@
     font-size: 1rem;
     line-height: 1.6;
     white-space: pre-wrap;
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--orange-100);
+  }
+
+  .vote-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .vote-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--orange-200);
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--orange-700);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .vote-btn:hover {
+    background: var(--orange-50);
+    border-color: var(--orange-400);
+    transform: translateY(-1px);
+  }
+
+  .vote-btn.active {
+    background: var(--orange-500);
+    border-color: var(--orange-600);
+    color: white;
+  }
+
+  .vote-btn.active:hover {
+    background: var(--orange-600);
+  }
+
+  .vote-btn:active {
+    transform: translateY(0);
+  }
+
+  .vote-icon {
+    font-size: 1.1rem;
+  }
+
+  .vote-count {
+    min-width: 12px;
+  }
+
+  .card-date {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-weight: 500;
   }
 
   /* States */

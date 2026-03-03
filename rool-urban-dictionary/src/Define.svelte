@@ -100,6 +100,8 @@
           grammar: grammar,
           article: articlePreview || term.trim(),
           definition: definition.trim(),
+          upvotes: 0,
+          downvotes: 0,
           createdAt: new Date().toISOString(),
         },
       });
@@ -135,7 +137,7 @@
 
     <!-- Term Input Row -->
     <div class="input-group">
-      <label class="input-label">Term</label>
+      <label class="input-label" for="term-input">Term</label>
       <div class="term-row">
         <input
           type="text"
@@ -172,7 +174,9 @@
 
     <!-- Definition Input -->
     <div class="input-group">
-      <label class="input-label">Definition & Examples</label>
+      <label class="input-label" for="definition-input"
+        >Definition & Examples</label
+      >
       <textarea
         class="input-orange definition-textarea"
         placeholder={"Define the word and provide funny examples. e.g. A rooler is someone who rools hard. Example: That teacher is a total rooler!"}
