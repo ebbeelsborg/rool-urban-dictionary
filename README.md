@@ -1,5 +1,7 @@
 # Rool Urban Dictionary 🍊
 
+[**Try it out!**](https://rool-urban-dictionary.rool.app)
+
 A visually enticing, modern, and responsive community-powered dictionary built on the [Rool](https://rool.app) platform. Define, discover, and share "rool" slang in a collaborative, AI-enhanced environment.
 
 Go ahead and build our community culture by adding to it and perusing the existing entries (they are “floaters” and can be searched).
