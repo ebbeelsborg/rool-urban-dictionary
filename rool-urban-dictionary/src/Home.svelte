@@ -13,6 +13,23 @@
   let searchResults = $state<any[]>([]);
   let hasSearched = $state(false);
 
+  // Reactive collection for floating words
+  const definitions = space.collection({ where: { type: "definition" } });
+  let words = $derived(definitions.objects);
+
+  // Randomize word properties for animation
+  const wordSeeds = $derived(
+    words.map((w, i) => ({
+      term: w.term,
+      x: `${(i * 137) % 90 + 5}%`,
+      size: `${0.8 + (i % 5) * 0.2}rem`,
+      duration: `${10 + (i % 8)}s`,
+      delay: `-${(i * 2.5) % 15}s`,
+      drift: `${5 + (i % 4)}s`,
+      opacity: 0.15 + (i % 3) * 0.05
+    }))
+  );
+
   async function handleSearch() {
     const q = searchQuery.trim().toLowerCase();
     if (!q || isSearching) return;
@@ -44,6 +61,27 @@
 </script>
 
 <div class="home-page">
+  <!-- Floating Words Background (only when not searching/showing results) -->
+  {#if !hasSearched && !isSearching}
+    <div class="words-background">
+      {#each wordSeeds as word}
+        <div
+          class="word-particle"
+          style="
+            --word-x: {word.x};
+            --word-size: {word.size};
+            --word-duration: {word.duration};
+            --word-delay: {word.delay};
+            --drift-duration: {word.drift};
+            --word-opacity: {word.opacity};
+          "
+        >
+          <span>{word.term}</span>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
   <!-- Hero Section -->
   <div class="home-hero">
     <h1 class="home-title">
@@ -163,9 +201,57 @@
     flex-direction: column;
     align-items: center;
     padding: 0 16px;
+    position: relative;
+  }
+
+  /* Floating Words Background */
+  .words-background {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .word-particle {
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+    animation: float-word var(--word-duration, 12s) linear var(--word-delay, 0s) infinite;
+    font-size: var(--word-size, 1rem);
+    left: var(--word-x, 50%);
+    opacity: var(--word-opacity, 0.2);
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--orange-500);
+    white-space: nowrap;
+  }
+
+  .word-particle span {
+    display: inline-block;
+    animation: float-drift var(--drift-duration, 6s) ease-in-out infinite;
+  }
+
+  @keyframes float-word {
+    0% {
+      transform: translateY(110vh) rotate(-5deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: var(--word-opacity, 0.2);
+    }
+    90% {
+      opacity: var(--word-opacity, 0.2);
+    }
+    100% {
+      transform: translateY(-20vh) rotate(5deg);
+      opacity: 0;
+    }
   }
 
   .home-hero {
+    position: relative;
+    z-index: 1;
     text-align: center;
     padding-top: 48px;
     padding-bottom: 8px;
@@ -188,6 +274,8 @@
 
   /* Search */
   .search-section {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 620px;
     margin-top: 32px;
@@ -297,6 +385,8 @@
 
   /* Results */
   .results-section {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 620px;
     margin-top: 32px;
