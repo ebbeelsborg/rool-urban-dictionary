@@ -6,6 +6,7 @@
   import Define from "./Define.svelte";
 
   const APP_NAME = "Rool Urban Dictionary";
+  const COMMUNITY_SPACE_ID = "19aKjg";
 
   const rool = createRool();
   rool.init();
@@ -13,50 +14,16 @@
   let space = $state<ReactiveSpace | null>(null);
   let currentPage = $state<"home" | "define">("home");
 
-  // Open space when ready
   $effect(() => {
     if (rool.authenticated && rool.spaces && !space) {
       openSpace();
     }
   });
 
-  function getSharedSpaceId(): string | null {
-    const hash = window.location.hash.slice(1);
-    return hash || null;
-  }
-
-  function setSharedSpaceId(id: string) {
-    window.history.replaceState(null, "", `#${id}`);
-  }
-
   async function openSpace() {
-    const sharedId = getSharedSpaceId();
-
-    if (sharedId) {
-      try {
-        space = await rool.openSpace(sharedId, { conversationId: "main" });
-        return;
-      } catch (e) {
-        console.debug("Could not open shared space, falling back:", e);
-      }
-    }
-
-    const spaces = rool.spaces!;
-    const existing = spaces.find((s) => s.name === APP_NAME);
-
-    space = existing
-      ? await rool.openSpace(existing.id, { conversationId: "main" })
-      : await rool.createSpace(APP_NAME, { conversationId: "main" });
-
-    try {
-      if (space.linkAccess !== "editor") {
-        await space.setLinkAccess("editor");
-      }
-    } catch (e) {
-      console.debug("Could not set link access:", e);
-    }
-
-    setSharedSpaceId(space.id);
+    space = await rool.openSpace(COMMUNITY_SPACE_ID, {
+      conversationId: "main",
+    });
   }
 </script>
 
