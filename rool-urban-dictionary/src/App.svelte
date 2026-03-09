@@ -20,7 +20,27 @@
     }
   });
 
+  function getSharedSpaceId(): string | null {
+    const hash = window.location.hash.slice(1);
+    return hash || null;
+  }
+
+  function setSharedSpaceId(id: string) {
+    window.history.replaceState(null, "", `#${id}`);
+  }
+
   async function openSpace() {
+    const sharedId = getSharedSpaceId();
+
+    if (sharedId) {
+      try {
+        space = await rool.openSpace(sharedId, { conversationId: "main" });
+        return;
+      } catch (e) {
+        console.debug("Could not open shared space, falling back:", e);
+      }
+    }
+
     const spaces = rool.spaces!;
     const existing = spaces.find((s) => s.name === APP_NAME);
 
@@ -28,15 +48,15 @@
       ? await rool.openSpace(existing.id, { conversationId: "main" })
       : await rool.createSpace(APP_NAME, { conversationId: "main" });
 
-    // Set link access to editor so all users via link are editors
     try {
       if (space.linkAccess !== "editor") {
         await space.setLinkAccess("editor");
       }
     } catch (e) {
-      // Non-owner might not have permission - that's fine
       console.debug("Could not set link access:", e);
     }
+
+    setSharedSpaceId(space.id);
   }
 </script>
 
