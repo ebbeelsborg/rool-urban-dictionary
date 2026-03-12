@@ -17,7 +17,7 @@
   let openError = $state("");
 
   $effect(() => {
-    if (rool.authenticated && !space && !openingSpace) {
+    if (rool.authenticated === true && !space && !openingSpace) {
       openSpace();
     }
   });
@@ -49,7 +49,7 @@
   }
 </script>
 
-{#if rool.authenticated === null}
+{#if rool.authenticated == null}
   <div class="loading-screen">
     <div class="loading-inner">
       <span class="loading-emoji">🍊</span>
@@ -58,6 +58,13 @@
   </div>
 {:else if rool.authenticated === false}
   <Splash appName={APP_NAME} onLogin={() => rool.login(APP_NAME)} />
+{:else if rool.authenticated !== true}
+  <div class="loading-screen">
+    <div class="loading-inner">
+      <span class="loading-emoji">🍊</span>
+      <p>Loading...</p>
+    </div>
+  </div>
 {:else}
   <div class="app-shell">
     <Header appName={APP_NAME} {space} onLogout={() => rool.logout()} />
