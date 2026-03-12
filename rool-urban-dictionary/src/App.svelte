@@ -13,21 +13,43 @@
 
   let space = $state<ReactiveSpace | null>(null);
   let currentPage = $state<"home" | "define">("home");
+  let openingSpace = $state(false);
+  let openError = $state("");
 
   $effect(() => {
-    if (rool.authenticated && rool.spaces && !space) {
+    if (rool.authenticated && !space && !openingSpace) {
       openSpace();
     }
   });
 
   async function openSpace() {
-    space = await rool.openSpace(COMMUNITY_SPACE_ID, {
-      conversationId: "main",
-    });
+    openingSpace = true;
+    openError = "";
+    try {
+      space = await rool.openSpace(COMMUNITY_SPACE_ID, {
+        conversationId: "main",
+      });
+
+      // Ensure the community space remains joinable by URL/ID.
+      // Non-owner/non-admin users may not have permission, which is fine.
+      try {
+        if (space.linkAccess !== "editor") {
+          await space.setLinkAccess("editor");
+        }
+      } catch (e) {
+        console.debug("Could not set link access:", e);
+      }
+    } catch (e) {
+      console.error("Could not open community space:", e);
+      openError =
+        "Could not open the shared dictionary space. Please refresh or sign in again.";
+    } finally {
+      openingSpace = false;
+    }
   }
 </script>
 
-{#if rool.authenticated === undefined}
+{#if rool.authenticated === null}
   <div class="loading-screen">
     <div class="loading-inner">
       <span class="loading-emoji">🍊</span>
@@ -40,7 +62,15 @@
   <div class="app-shell">
     <Header appName={APP_NAME} {space} onLogout={() => rool.logout()} />
 
-    {#if !space}
+    {#if openError}
+      <div class="loading-screen">
+        <div class="loading-inner">
+          <span class="loading-emoji">⚠️</span>
+          <p>{openError}</p>
+          <button class="retry-btn" onclick={openSpace}>Retry</button>
+        </div>
+      </div>
+    {:else if !space}
       <div class="loading-screen">
         <div class="loading-inner">
           <span class="loading-emoji">🍊</span>
@@ -88,5 +118,21 @@
     font-family: var(--font-body);
     color: #9ca3af;
     font-weight: 500;
+  }
+
+  .retry-btn {
+    margin-top: 12px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+    font-family: var(--font-body);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .retry-btn:hover {
+    background: #ffedd5;
   }
 </style>
