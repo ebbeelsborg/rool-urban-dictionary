@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { ReactiveSpace } from "@rool-dev/svelte";
+  import type { ReactiveChannel } from "@rool-dev/svelte";
 
   interface Props {
-    space: ReactiveSpace;
+    channel: ReactiveChannel;
     onBack: () => void;
   }
 
-  let { space, onBack }: Props = $props();
+  let { channel, onBack }: Props = $props();
 
   let term = $state("");
   let grammar = $state("");
@@ -38,7 +38,7 @@
     articlePreview = "";
 
     try {
-      const { message } = await space.prompt(
+      const { message } = await channel.prompt(
         `I need to know how to use the article (a, an, the, or no article) before the word "${term.trim()}" when used as a ${grammar}. Reply with ONLY the article (if any) followed by the word, nothing else. For example, if the word is "rooler" and it's a noun, reply "A rooler". If it's an adjective like "roolish", reply "roolish" with no article. Keep it simple — just the usage form.`,
         {
           readOnly: true,
@@ -93,7 +93,7 @@
     isSubmitting = true;
 
     try {
-      await space.createObject({
+      await channel.createObject({
         data: {
           type: "definition",
           term: term.trim().toLowerCase(),

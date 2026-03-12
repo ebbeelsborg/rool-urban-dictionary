@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { ReactiveSpace, ReactiveCollection } from "@rool-dev/svelte";
+  import type { ReactiveChannel } from "@rool-dev/svelte";
 
   interface Props {
-    space: ReactiveSpace;
+    channel: ReactiveChannel;
     onNavigateDefine: () => void;
   }
 
@@ -17,7 +17,7 @@
     createdAt?: string;
   }
 
-  let { space, onNavigateDefine }: Props = $props();
+  let { channel, onNavigateDefine }: Props = $props();
 
   let searchQuery = $state("");
   let activeSearchQuery = $state("");
@@ -42,8 +42,8 @@
     localStorage.setItem("rool_user_votes", JSON.stringify(userVotes));
   });
 
-  // Reactive collection for all definitions
-  const definitions = space.collection({ where: { type: "definition" } });
+  // Reactive watch for all definitions (SDK 0.3+)
+  const definitions = channel.watch({ where: { type: "definition" } });
   let words = $derived(definitions.objects as Definition[]);
 
   // Derived search results from the reactive collection
@@ -120,7 +120,7 @@
         updates.downvotes = Math.max(0, (def.downvotes || 0) + downDelta);
 
       if (Object.keys(updates).length > 0) {
-        await space.updateObject(definitionId, {
+        await channel.updateObject(definitionId, {
           data: updates,
         });
       }

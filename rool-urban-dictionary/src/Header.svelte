@@ -1,13 +1,13 @@
 <script lang="ts">
-  import type { ReactiveSpace } from "@rool-dev/svelte";
+  import type { ReactiveChannel } from "@rool-dev/svelte";
 
   interface Props {
     appName: string;
-    space: ReactiveSpace | null;
+    channel: ReactiveChannel | null;
     onLogout: () => void;
   }
 
-  let { appName, space, onLogout }: Props = $props();
+  let { appName, channel, onLogout }: Props = $props();
 </script>
 
 <header class="app-header">
@@ -16,7 +16,7 @@
     <h1 class="header-title">{appName}</h1>
   </div>
   <div class="header-right">
-    {#if space}
+    {#if channel}
       <span class="header-badge">
         <span class="badge-dot"></span>
         Connected

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createRool, type ReactiveSpace } from "@rool-dev/svelte";
+  import { createRool, type ReactiveChannel } from "@rool-dev/svelte";
   import Splash from "./Splash.svelte";
   import Header from "./Header.svelte";
   import Home from "./Home.svelte";
@@ -11,13 +11,13 @@
   const rool = createRool();
   rool.init();
 
-  let space = $state<ReactiveSpace | null>(null);
+  let channel = $state<ReactiveChannel | null>(null);
   let currentPage = $state<"home" | "define">("home");
   let openingSpace = $state(false);
   let openError = $state("");
 
   $effect(() => {
-    if (rool.authenticated === true && !space && !openingSpace) {
+    if (rool.authenticated === true && !channel && !openingSpace) {
       openSpace();
     }
   });
@@ -26,19 +26,20 @@
     openingSpace = true;
     openError = "";
     try {
-      space = await rool.openSpace(COMMUNITY_SPACE_ID, {
-        conversationId: "main",
-      });
+      // 0.3+ separates space admin handle from reactive channel operations.
+      const adminSpace = await rool.openSpace(COMMUNITY_SPACE_ID);
 
       // Ensure the community space remains joinable by URL/ID.
       // Non-owner/non-admin users may not have permission, which is fine.
       try {
-        if (space.linkAccess !== "editor") {
-          await space.setLinkAccess("editor");
+        if (adminSpace.linkAccess !== "editor") {
+          await adminSpace.setLinkAccess("editor");
         }
       } catch (e) {
         console.debug("Could not set link access:", e);
       }
+
+      channel = await rool.openChannel(COMMUNITY_SPACE_ID, "main");
     } catch (e) {
       console.error("Could not open community space:", e);
       openError =
@@ -67,7 +68,7 @@
   </div>
 {:else}
   <div class="app-shell">
-    <Header appName={APP_NAME} {space} onLogout={() => rool.logout()} />
+    <Header appName={APP_NAME} {channel} onLogout={() => rool.logout()} />
 
     {#if openError}
       <div class="loading-screen">
@@ -77,17 +78,17 @@
           <button class="retry-btn" onclick={openSpace}>Retry</button>
         </div>
       </div>
-    {:else if !space}
+    {:else if !channel}
       <div class="loading-screen">
         <div class="loading-inner">
           <span class="loading-emoji">🍊</span>
-          <p>Opening dictionary space...</p>
+          <p>Opening dictionary channel...</p>
         </div>
       </div>
     {:else if currentPage === "define"}
-      <Define {space} onBack={() => (currentPage = "home")} />
+      <Define {channel} onBack={() => (currentPage = "home")} />
     {:else}
-      <Home {space} onNavigateDefine={() => (currentPage = "define")} />
+      <Home {channel} onNavigateDefine={() => (currentPage = "define")} />
     {/if}
   </div>
 {/if}
